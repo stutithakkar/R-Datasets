@@ -1,0 +1,82 @@
+---
+title: "Decision Tree"
+author: "Stuti Thakkar"
+date: "23/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Data Importing}
+train_data<-read.csv("C:/Folder/DSP/train.csv", na.strings=c("","","NA"))
+test_data<-read.csv("C:/Folder/DSP/test.csv", na.strings=c("","","NA"))
+```
+
+```{r data processing}
+library(dplyr)
+colSums(is.na(train_data))
+colSums(is.na(test_data))
+dim(test_data)
+combined_data<-bind_rows(train_data,test_data)
+colSums(is.na(combined_data))
+
+dim(combined_data)
+combined_data$Cabin<-NULL
+combined_data$Ticket<-NULL
+combined_data$PassengerId<-NULL
+colSums(is.na(combined_data))
+combined_data$Age[is.na(combined_data$Age)]<-median(combined_data$Age, na.rm=T)
+combined_data$Fare[is.na(combined_data$Fare)]<-median(combined_data$Fare, na.rm=T)
+combined_data$Embarked[is.na(combined_data$Embarked)]<-"S"
+combined_data$Embarked<-(as.factor(combined_data$Embarked))
+colSums(is.na(combined_data))
+vect1<-c("Survived","Pclass", "SibSp","Parch","Sex")
+combined_data[,vect1]<-lapply(combined_data[,vect1],as.factor)
+str(combined_data)
+combined_data$Name<-NULL
+train_data<-combined_data[1:891,]
+test_data<-combined_data[892:1309,]
+
+
+```
+
+```{r Packages installed}
+install.packages("partykit")
+library(partykit)
+tree_model<-ctree(Survived~.,data= train_data)
+plot(tree_model,type="simple")
+
+
+install.packages("rpart")
+install.packages(("rpart.plot"))
+library(rpart)
+library(rpart.plot)
+tree_model2<-rpart(Survived~., data=train_data)
+rpart.plot(tree_model2)
+
+```
+```{r predict values}
+predict_survived<-predict(tree_model, test_data)
+predict_survived
+pred_sur<-predict(tree_model2, test_data)
+pred_sur
+predict_survived2<-predict(tree_model, train_data)
+head(predict_survived2)
+pred_sur2<-predict(tree_model2, train_data, type="class")
+head(pred_sur2)
+
+table(actual=train_data$Survived, predicted=predict_survived2)
+table(actual=train_data$Survived, predicted=pred_sur2)
+
+
+```
+
+
+
+
+
+
+
+

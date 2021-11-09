@@ -1,0 +1,76 @@
+---
+title: "Project2"
+author: "Imarticus_dsp55"
+date: "16/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+import data set 
+```{r data_import}
+credit_risk<-read.csv("C:/personal/dsp55/Dataset/credit_dataset_final.csv")
+dim(credit_risk)
+colSums(is.na(credit_risk))
+# no missing values present in the code 
+str(credit_risk)
+summary(credit_risk)
+#credit.duration.months,credit.amount,age
+vect1<-names(credit_risk)
+vect1
+vect1=vect1[-c(3,6,14)]
+vect1
+credit_risk[,vect1]<-lapply(credit_risk[,vect1],as.factor)
+str(credit_risk)
+```
+
+```{r data partition}
+library(caret)
+set.seed(200)
+index<-createDataPartition(credit_risk$credit.rating,p=0.75,list = FALSE)
+train_credit_risk<-credit_risk[index,]
+test_credit_risk<-credit_risk[-index,]
+dim(train_credit_risk)
+dim(test_credit_risk)
+```
+
+```{r model_formation}
+a<-table(credit_risk$credit.rating)
+a
+# use stepwise regression to find sig variables 
+# create null model
+null_credit_model<-glm(credit.rating~1,data = train_credit_risk,family = "binomial")
+# complete model 
+full_credit_model<-glm(credit.rating~.,data = train_credit_risk,family = "binomial")
+# step(start_point,direction,scope(lower=null,upper=full))
+step(null_credit_model,direction = "forward",scope = 
+       list(lower=null_credit_model,upper=full_credit_model))
+
+credit_risk_model<-glm(formula = credit.rating ~ account.balance + previous.credit.payment.status + 
+    credit.duration.months + credit.purpose + savings + current.assets + 
+    employment.duration + guarantor + foreign.worker + apartment.type + 
+    other.credits, family = "binomial", data = train_credit_risk)
+
+```
+
+```{r multicolinearity}
+# call library car
+library(car)
+# use VIF 
+vif(credit_risk_model)
+# as all variables are having gvif <5 ; model does not consist of MultiColinearity
+```
+
+```{r model evaluation}
+# predicted probabilities 
+pred_prob_CR<-predict(credit_risk_model,train_credit_risk,type = "response")
+# default threshold = 0.5[ any prob > 0.5 = 1 else 0]
+pred_CR<-ifelse(pred_prob_CR>0.5,"1","0")
+pred_CR<-as.factor(pred_CR)
+
+# Confusion matrix
+table(actual=train_credit_risk$credit.rating,predicted=pred_CR)
+confusionMatrix(train_credit_risk$credit.rating,pred_CR)
+``` 

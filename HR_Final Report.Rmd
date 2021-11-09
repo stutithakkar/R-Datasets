@@ -1,0 +1,118 @@
+---
+title: "HR_Project"
+author: "Stuti Thakkar"
+date: "17/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data_import}
+
+aug_train<-read.csv("C:/Folder/DSP/aug_train.csv", na.strings= c("", "", "NA"))
+
+aug_test<-read.csv("C:/Folder/DSP/aug_test.csv", na.string=c("","","NA"))
+
+dim(aug_test)
+dim(aug_train)
+head(aug_test)
+head(aug_train)
+
+
+```
+
+```{r data_processing}
+library(dplyr)
+combined_data<-bind_rows(aug_train,aug_test)
+colSums(is.na(combined_data))
+combined_data$enrollee_id<-NULL
+combined_data$city<-NULL
+library(VIM)
+#vect1<-c("gender", "enrolled_university", "education_level", "major_discipline", "experience", "company_size", "company_type", "last_new_job")
+
+#imputed_data<-kNN(combined_data, variable= vect1)
+
+imputed_data<-read.csv("C:/Folder/DSP/hr_imputed.csv")
+head(imputed_data)
+imputed_data$X<-NULL
+final_data<-imputed_data[,1:12]
+train_imputed_data<-(final_data[1:19158,])
+test_imputed_data<-(final_data[19158:21287,])
+
+```
+
+
+```{r model_preperation}
+set.seed(200)
+index<-sample(19158, 19158*0.75)
+train_data<-train_imputed_data[index,]
+test_data<-train_imputed_data[-index,]
+dim(train_data)
+dim(test_data)
+train_data$target<-as.factor(train_data$target)
+test_data$target<-as.factor(test_data$target)
+table(train_data$target)
+
+```
+
+```{r model_building}
+#model_null<-glm(target~1, data=train_data, family = "binomial")
+#model_full<-glm(target~., data= train_data, family="binomial")
+#step(model_null, direction ="forward", scope= list(lower= model_null, upper= model_full))
+
+final_model<-glm(formula = target ~ city_development_index + relevent_experience + education_level + company_size + company_type + experience + enrolled_university + last_new_job + training_hours + gender,  family = "binomial", data = train_data)
+
+
+pred_prob_train_data<-predict(final_model, train_data, type="response")
+library(ROCR)
+library(car)
+vif(final_model)
+
+pred<-prediction(pred_prob_train_data, train_data$target)
+perf<-performance(pred, "tpr", "tnr")
+plot(perf, print.cutoffs.at=seq(0.1,1,0.1))
+pred_target<-ifelse(pred_prob_train_data>0.27, "1","0")
+
+table(actual= train_data$target, predicted=pred_target)
+library(caret)
+pred_target<-as.factor(pred_target)
+train_data$target<-as.factor(train_data$target)
+confusionMatrix(pred_target,train_data$target, positive="1")
+```
+
+```{r Cross Validation}
+
+pred_prob_test_data<-predict(final_model,test_data, type="response")
+head(pred_prob_test_data)
+pred_target_test_data<-ifelse(pred_prob_test_data>0.24, "1", "0")
+pred_target_test_data<-as.factor(pred_target_test_data)
+test_data$target<-as.factor(test_data$target)
+head(pred_target_test_data)
+#pred_target_test_data<-as.factor(pred_target_test_data)
+confusionMatrix(pred_target_test_data, test_data$target, positive ="1")
+table(pred_target_test_data, test_data$target)
+str(pred_target_test_data)
+str(test_data$target)
+```
+
+```{r Final Testing}
+
+predicted_target<-predict(final_model, test_imputed_data)
+test_imputed_data$target<-ifelse(predicted_target>0.24, "1", "0")
+
+
+
+
+
+
+
+
+
+
+
+```
+
+
+
